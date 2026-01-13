@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Sensor Dungeon</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="bg-overlay"></div> <div class="main-frame">
+        <header class="game-header">
+            <h1>AI SENSOR DUNGEON</h1>
+            <div id="turn-display" class="turn-badge">Turn: 1 / 10</div>
+        </header>
+
+        <main class="game-console">
+            <div class="screen-frame">
+                <div id="story-area" class="story-log">
+                    <p class="system-msg">
+                        暗い洞窟の入り口に立っている...。<br>
+                        手元の「羅針盤（スマホ）」を傾けて進む方向を決めよう。
+                    </p>
+                </div>
+            </div>
+
+            <div class="controls-area">
+                <div class="radar-container">
+                    <div class="radar-lines"></div>
+                    <div id="dot" class="radar-blip"></div>
+                </div>
+                
+                <div class="status-panel">
+                    <div id="loading" class="loading-text">FATE WEAVING...</div>
+                    <div id="log" class="action-log">LINK WAITING...</div>
+                    <button id="reset-btn" onclick="resetGame()">🔄 RESTART</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let isProcessing = false; 
+        let chatHistory = [];
+        
+        let currentTurn = 1;
+        const MAX_TURNS = 10;
+        let isGameOver = false;
+
+        // ゲーム用ルームに参加
+        socket.emit('join', 'game');
+
+        // スマホからのセンサーデータを受信
+        socket.on('sensor_update', (data) => {
+            updateVisual(data.b, data.g);
+            checkAction(data.b, data.g);
+        });
+
+        // ドットの位置を更新（レーダー表示）
+        function updateVisual(beta, gamma) {
+            const dot = document.getElementById('dot');
+            // 感度調整
+            let moveY = beta * 2.5; 
+            let moveX = gamma * 2.5;
+            
+            // 円の中に収める制限
+            const limit = 90;
+            moveX = Math.max(-limit, Math.min(limit, moveX));
+            moveY = Math.max(-limit, Math.min(limit, moveY));
+            
+            dot.style.transform = `translate(calc(-50% + ${moveX}px), calc(-50% + ${moveY}px))`;
+        }
+
+        // 傾き判定
+        function checkAction(beta, gamma) {
+            if (isProcessing || isGameOver) return; 
+
+            const THRESHOLD = 20; 
+            let action = "";
+
+            if (beta < -THRESHOLD) action = "北（奥）へ進む";
+            else if (beta > THRESHOLD) action = "南（手前）へ戻る";
+            else if (gamma > THRESHOLD) action = "東（右）へ進む";
+            else if (gamma < -THRESHOLD) action = "西（左）へ進む";
+
+            const logEl = document.getElementById('log');
+            
+            if (action) {
+                logEl.innerText = `>> ${action}`;
+                logEl.classList.add('active'); // 光らせる
+                
+                if (!this.holdTimer) {
+                    this.holdTimer = setTimeout(() => {
+                        sendToAI(action);
+                        this.holdTimer = null;
+                    }, 1000);
+                }
+            } else {
+                if (this.holdTimer) {
+                    clearTimeout(this.holdTimer);
+                    this.holdTimer = null;
+                    logEl.innerText = "STANDBY...";
+                    logEl.classList.remove('active');
+                }
+            }
+        }
+
+        // --- スクロール関数 ---
+        function scrollToBottom() {
+            const storyDiv = document.getElementById('story-area');
+            storyDiv.scrollTop = storyDiv.scrollHeight;
+        }
+
+        // AIへ送信
+        async function sendToAI(action) {
+            isProcessing = true;
+            const storyDiv = document.getElementById('story-area');
+            const loadingDiv = document.getElementById('loading');
+            
+            loadingDiv.style.display = 'block';
+            
+            // ユーザーアクションを表示してスクロール
+            storyDiv.innerHTML += `<div class="user-action">> ${action}</div>`;
+            scrollToBottom();
+
+            let prompt = "";
+            
+            // プロンプト（AIへの命令）を作成
+            if (currentTurn < MAX_TURNS) {
+                // 通常ターン
+                prompt = `
+                あなたはファンタジーRPGのゲームマスター（ナレーター）です。
+                現在は全${MAX_TURNS}ターン中の【${currentTurn}ターン目】です。
+                プレイヤーの行動：「${action}」
+                
+                【絶対的な指示】
+                1. 必ず【日本語】で出力してください。
+                2. 「承知いたしました」や「次はどうしますか？」などの挨拶・メタ発言は禁止です。
+                3. これまでの文脈（history）を踏まえ、行動の結果を小説風の文章（50〜80文字程度）で描写してください。
+                4. 雰囲気は「ダークファンタジー」で、謎めいた表現を使ってください。
+                `;
+            } else {
+                // 最終ターン
+                prompt = `
+                あなたはファンタジーRPGのナレーターです。
+                これが【最終ターン（${MAX_TURNS}/${MAX_TURNS}）】です。
+                プレイヤーの行動：「${action}」
+                
+                【絶対的な指示】
+                1. 必ず【日本語】で出力してください。
+                2. この行動によって物語を完結させてください（Bad EndでもGood Endでも可）。
+                3. 「冒険の記録」などの箇条書きは禁止。あくまで物語の文章（エピローグ）のみを出力してください。
+                `;
+            }
+
+            try {
+                // historyを含めて送信
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: prompt, history: chatHistory })
+                });
+                
+                const data = await res.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // AIの返答を表示してスクロール
+                storyDiv.innerHTML += `<div class="ai-response">${data.reply}</div>`;
+                scrollToBottom();
+                
+                // 履歴に追加
+                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                chatHistory.push({ role: "model", parts: [{ text: data.reply }] });
+
+                // ターン更新処理
+                if (currentTurn >= MAX_TURNS) {
+                    isGameOver = true;
+                    document.getElementById('log').innerText = "QUEST CLEAR";
+                    document.getElementById('reset-btn').style.display = 'inline-block';
+                    scrollToBottom();
+                } else {
+                    currentTurn++;
+                    document.getElementById('turn-display').innerText = `Turn: ${currentTurn} / ${MAX_TURNS}`;
+                }
+
+            } catch (err) {
+                console.error(err);
+                storyDiv.innerHTML += `<div class="error-msg">通信エラー: 混み合っているようです。もう一度試してください</div>`;
+                scrollToBottom();
+            } finally {
+                loadingDiv.style.display = 'none';
+                setTimeout(() => { isProcessing = false; }, 2000);
+            }
+        }
+
+        // リセット機能
+        function resetGame() {
+            if(!confirm("冒険をリセットして最初から始めますか？")) return;
+            
+            currentTurn = 1;
+            isGameOver = false;
+            chatHistory = []; 
+            
+            // UIのリセット
+            document.getElementById('turn-display').innerText = `Turn: 1 / ${MAX_TURNS}`;
+            document.getElementById('story-area').innerHTML = `
+                <p class="system-msg">
+                    暗い洞窟の入り口に立っている...。<br>
+                    手元の「羅針盤（スマホ）」を傾けて進む方向を決めよう。
+                </p>`;
+            document.getElementById('reset-btn').style.display = 'none';
+            document.getElementById('log').innerText = "STANDBY...";
+            document.getElementById('log').classList.remove('active');
+        }
+    </script>
+</body>
+</html>

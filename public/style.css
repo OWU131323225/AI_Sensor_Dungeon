@@ -1,0 +1,268 @@
+/* --- Base Settings --- */
+:root {
+    --bg-dark: #05070a;
+    --panel-bg: rgba(16, 20, 28, 0.9);
+    --accent-gold: #cfb53b;
+    --accent-cyan: #00f3ff;
+    --accent-danger: #ff2a6d;
+    --text-main: #e0e6ed;
+    --font-title: 'Cinzel', serif; /* ファンタジー風英語フォント */
+    --font-body: 'Zen Maru Gothic', sans-serif; /* 読みやすい日本語フォント */
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-dark);
+    font-family: var(--font-body);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* 全画面アプリ感 */
+}
+
+/* 背景にぼんやりとした光を入れる */
+.bg-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, #1a233a 0%, #000000 100%);
+    z-index: -1;
+}
+
+/* --- Main Layout --- */
+.main-frame {
+    width: 95%;
+    max-width: 1000px;
+    height: 90vh;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background: var(--panel-bg);
+    box-shadow: 0 0 40px rgba(0, 243, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+/* --- Header --- */
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    border-bottom: 2px solid #333;
+    background: rgba(0,0,0,0.5);
+}
+
+.game-header h1 {
+    font-family: var(--font-title);
+    font-size: 1.8rem;
+    color: var(--accent-gold);
+    text-shadow: 0 0 10px rgba(207, 181, 59, 0.5);
+    letter-spacing: 2px;
+}
+
+.turn-badge {
+    font-family: var(--font-title);
+    background: transparent;
+    border: 1px solid var(--accent-cyan);
+    color: var(--accent-cyan);
+    padding: 5px 20px;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+}
+
+/* --- Console Area --- */
+.game-console {
+    flex: 1;
+    display: flex;
+    padding: 20px;
+    gap: 20px;
+    overflow: hidden; /* これ重要：親枠からはみ出させない */
+    min-height: 0;    /* これも重要：Flexboxのバグ回避 */
+}
+
+/* Story Screen */
+.screen-frame {
+    flex: 2;
+    background: #000;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 20px; /* ここにpaddingがあると内側の計算がズレやすいので注意 */
+    position: relative;
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+    
+    /* 以下を追加・変更：中身を整列させる */
+    display: flex;
+    flex-direction: column;
+}
+
+/* 画面の走査線（変更なし） */
+.screen-frame::after {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 2;
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+}
+
+.story-log {
+    /* height: 100%; を削除して以下に変更 */
+    flex: 1;             /* 余ったスペースを全部埋める */
+    overflow-y: auto;    /* 縦方向にはみ出たらスクロールバーを出す */
+    padding-right: 10px; /* スクロールバーと文字が重ならないように */
+    
+    /* スクロールを滑らかに */
+    scroll-behavior: smooth;
+}
+
+/* スクロールバーのカスタマイズ */
+.story-log::-webkit-scrollbar {
+    width: 8px;
+}
+.story-log::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
+
+/* メッセージスタイル */
+.system-msg { color: #888; font-style: italic; }
+.user-action { 
+    color: var(--accent-gold); 
+    margin-top: 20px; 
+    border-top: 1px dashed #333;
+    padding-top: 10px;
+}
+.ai-response { 
+    color: var(--text-main); 
+    margin-bottom: 20px; 
+    text-shadow: 0 0 2px rgba(255,255,255,0.3);
+}
+
+/* --- Controls Area (Right Side) --- */
+.controls-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+}
+
+/* Radar / Compass */
+.radar-container {
+    width: 250px;
+    height: 250px;
+    border-radius: 50%;
+    background: 
+        radial-gradient(circle, transparent 60%, rgba(0, 243, 255, 0.1) 70%),
+        linear-gradient(0deg, transparent 49%, rgba(0, 243, 255, 0.3) 50%, transparent 51%),
+        linear-gradient(90deg, transparent 49%, rgba(0, 243, 255, 0.3) 50%, transparent 51%),
+        #0a0f18;
+    border: 2px solid var(--accent-cyan);
+    position: relative;
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.2), inset 0 0 30px rgba(0, 243, 255, 0.1);
+    overflow: hidden;
+}
+
+/* 同心円の装飾 */
+.radar-lines {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60%; height: 60%;
+    border: 1px dashed rgba(0, 243, 255, 0.3);
+    border-radius: 50%;
+}
+
+.radar-blip {
+    width: 12px;
+    height: 12px;
+    background: var(--accent-gold);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* JSでこれを上書き制御する */
+    box-shadow: 0 0 10px var(--accent-gold);
+    transition: transform 0.1s ease-out; /* 滑らかに動かす */
+}
+
+/* Status Panel */
+.status-panel {
+    text-align: center;
+    width: 100%;
+}
+
+.action-log {
+    font-family: var(--font-title);
+    font-size: 1.2rem;
+    color: #555;
+    margin: 15px 0;
+    min-height: 1.5em;
+    transition: all 0.3s;
+}
+
+.action-log.active {
+    color: var(--accent-cyan);
+    text-shadow: 0 0 8px var(--accent-cyan);
+    font-weight: bold;
+}
+
+.loading-text {
+    display: none;
+    color: var(--accent-danger);
+    font-family: var(--font-title);
+    animation: blink 1s infinite;
+}
+
+@keyframes blink { 50% { opacity: 0.3; } }
+
+/* Button */
+#reset-btn {
+    display: none;
+    background: transparent;
+    border: 1px solid var(--accent-danger);
+    color: var(--accent-danger);
+    padding: 10px 30px;
+    font-family: var(--font-title);
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: 0.3s;
+}
+
+#reset-btn:hover {
+    background: var(--accent-danger);
+    color: #fff;
+    box-shadow: 0 0 15px var(--accent-danger);
+}
+
+/* --- Responsive for Mobile --- */
+@media (max-width: 768px) {
+    .game-console {
+        flex-direction: column-reverse; /* スマホではレーダーを上にしてもいいかも */
+    }
+    .main-frame {
+        height: 100vh;
+        width: 100%;
+        border: none;
+    }
+    .radar-container {
+        width: 200px;
+        height: 200px;
+    }
+}
