@@ -18,11 +18,9 @@
             height: 100vh; 
             margin: 0; 
             overflow: hidden;
-            /* 操作説明の背景文字が選択されないように */
             user-select: none; 
         }
 
-        /* コンパスの外枠 */
         .compass-container {
             position: relative;
             width: 260px;
@@ -34,17 +32,15 @@
             background: radial-gradient(circle, #222 0%, #000 100%);
         }
 
-        /* 固定された盤面（目盛りと文字） */
         .compass-face {
             position: absolute;
             top: 0; left: 0;
             width: 100%; height: 100%;
             border-radius: 50%;
             box-sizing: border-box;
-            border: 2px dashed #444; /* 目盛りっぽい点線 */
+            border: 2px dashed #444; /
         }
         
-        /* 方角の文字配置 */
         .label {
             position: absolute;
             font-weight: bold;
@@ -57,7 +53,6 @@
         .label-e { right: 15px; top: 50%; transform: translateY(-50%); }
         .label-w { left: 15px; top: 50%; transform: translateY(-50%); }
 
-        /* 中央の固定矢印（上向き） */
         .fixed-arrow {
             position: absolute;
             top: 50%; left: 50%;
@@ -66,26 +61,23 @@
             height: 0; 
             border-left: 10px solid transparent;
             border-right: 10px solid transparent;
-            border-bottom: 20px solid rgba(0, 255, 0, 0.3); /* 薄い緑の矢印 */
-            margin-top: -30px; /* 少し上にずらす */
+            border-bottom: 20px solid rgba(0, 255, 0, 0.3); 
+            margin-top: -30px; 
         }
 
-        /* プレイヤーの傾きを示すマーカー（赤丸） */
         .tilt-marker {
             position: absolute;
             top: 50%; left: 50%;
             width: 24px; height: 24px;
             background: #ff0055;
             border-radius: 50%;
-            transform: translate(-50%, -50%); /* 中心合わせ */
+            transform: translate(-50%, -50%); 
             box-shadow: 0 0 15px #ff0055;
             border: 2px solid #fff;
-            /* アニメーションを滑らかにする設定 */
             transition: transform 0.1s linear; 
             z-index: 10;
         }
 
-        /* 十字線 */
         .crosshair {
             position: absolute;
             top: 50%; left: 50%;
@@ -173,29 +165,21 @@
         function handleOrientation(event) {
             if (!isActive) return;
 
-            // beta: 前後(-180~180) -> 上下移動
-            // gamma: 左右(-90~90) -> 左右移動
             const beta = event.beta || 0; 
             const gamma = event.gamma || 0;
 
-            // --- マーカーの移動 ---
             const marker = document.getElementById('marker');
-            const sensitivity = 2.5; // 感度（大きいほど大きく動く）
-            
-            // 移動量を計算
+            const sensitivity = 2.5; 
+
             let moveY = beta * sensitivity;
             let moveX = gamma * sensitivity;
-            
-            // 枠からはみ出さないように制限 (半径110pxくらい)
+
             const maxDist = 110;
             moveX = Math.max(-maxDist, Math.min(maxDist, moveX));
             moveY = Math.max(-maxDist, Math.min(maxDist, moveY));
 
-            // translate(-50%, -50%) は中心合わせのために必須
-            // そのあとに計算した移動量(px)を加算する
             marker.style.transform = `translate(calc(-50% + ${moveX}px), calc(-50% + ${moveY}px))`;
 
-            // --- 通信 ---
             const now = Date.now();
             if (now - lastSend < 50) return; 
 

@@ -192,7 +192,6 @@
             storyDiv.innerHTML += `<div class="user-action">> ${displayActionText}</div>`;
             scrollToBottom();
 
-            // 文脈とテーマ
             let lastStory = "";
             if (chatHistory.length === 0) {
                 currentThemeData = THEME_LIST[Math.floor(Math.random() * THEME_LIST.length)];
@@ -204,7 +203,6 @@
                 }
             }
 
-            // ゾーン計算
             let zoneIndex = 0;
             if (currentTurn >= 10) zoneIndex = 3;
             else if (currentTurn >= 7) zoneIndex = 2;
@@ -220,7 +218,6 @@
                 zoneChangeInstruction = `現在の場所は『${currentZoneName}』です。この場所特有の景色を描写してください。`;
             }
 
-            // アクション意図
             let playerIntent = "";
             let currentDirection = ""; 
 
@@ -244,7 +241,6 @@
                 }
             }
 
-            // 接続詞
             let transitionInstruction = "";
             if (!isBattleMode) {
                 if (chatHistory.length === 0) transitionInstruction = "物語の書き出しです。";
@@ -255,16 +251,12 @@
 
             if (chatHistory.length > 6) chatHistory = chatHistory.slice(-6);
 
-            // --- ★修正：バトル発生ロジック（最低保証付き） ---
             let encounterInstruction = "";
             if (!isBattleMode) {
-                // 条件1: まだ最大回数戦っていない
                 if (battleCount < MAX_BATTLES) {
-                     // 条件2: 9ターン目になっても一度も戦ってないなら強制エンカウント（見せ場を作る）
                      if (currentTurn === 9 && battleCount === 0) {
                         encounterInstruction = "★重要指示：【クライマックス発生】突如としてこのエリアの主（ボス）が現れました！強制的に戦闘に突入します。文末に必ず『[BATTLE_START]』と出力してください。";
                      }
-                     // 条件3: 4ターン目以降、20%の確率でランダムエンカウント
                      else if (currentTurn >= 4 && Math.random() < 0.20) {
                         encounterInstruction = "★重要指示：この描写の最後に、突如として敵や怪物が現れ、襲い掛かる描写を入れてください。文末に必ず『[BATTLE_START]』と出力してください。";
                      } else {
@@ -274,7 +266,6 @@
                     encounterInstruction = "★重要指示：戦闘は禁止です。環境の変化や探索の様子を描写してください。";
                 }
             }
-            // ---------------------------------------------
 
             let prompt = "";
 

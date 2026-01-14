@@ -1,4 +1,4 @@
-/* --- Base Settings --- */
+
 :root {
     --bg-dark: #05070a;
     --panel-bg: rgba(16, 20, 28, 0.9);
@@ -6,8 +6,8 @@
     --accent-cyan: #00f3ff;
     --accent-danger: #ff2a6d;
     --text-main: #e0e6ed;
-    --font-title: 'Cinzel', serif; /* ファンタジー風英語フォント */
-    --font-body: 'Zen Maru Gothic', sans-serif; /* 読みやすい日本語フォント */
+    --font-title: 'Cinzel', serif;
+    --font-body: 'Zen Maru Gothic', sans-serif; 
 }
 
 * {
@@ -24,10 +24,9 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden; /* 全画面アプリ感 */
+    overflow: hidden;
 }
 
-/* 背景にぼんやりとした光を入れる */
 .bg-overlay {
     position: fixed;
     top: 0;
@@ -38,7 +37,6 @@ body {
     z-index: -1;
 }
 
-/* --- Main Layout --- */
 .main-frame {
     width: 95%;
     max-width: 1000px;
@@ -52,7 +50,6 @@ body {
     backdrop-filter: blur(10px);
 }
 
-/* --- Header --- */
 .game-header {
     display: flex;
     justify-content: space-between;
@@ -80,32 +77,28 @@ body {
     box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
 }
 
-/* --- Console Area --- */
 .game-console {
     flex: 1;
     display: flex;
     padding: 20px;
     gap: 20px;
-    overflow: hidden; /* これ重要：親枠からはみ出させない */
-    min-height: 0;    /* これも重要：Flexboxのバグ回避 */
+    overflow: hidden;
+    min-height: 0;
 }
 
-/* Story Screen */
 .screen-frame {
     flex: 2;
     background: #000;
     border: 1px solid #444;
     border-radius: 4px;
-    padding: 20px; /* ここにpaddingがあると内側の計算がズレやすいので注意 */
+    padding: 20px;
     position: relative;
     box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
     
-    /* 以下を追加・変更：中身を整列させる */
     display: flex;
     flex-direction: column;
 }
 
-/* 画面の走査線（変更なし） */
 .screen-frame::after {
     content: " ";
     display: block;
@@ -121,16 +114,13 @@ body {
 }
 
 .story-log {
-    /* height: 100%; を削除して以下に変更 */
-    flex: 1;             /* 余ったスペースを全部埋める */
-    overflow-y: auto;    /* 縦方向にはみ出たらスクロールバーを出す */
-    padding-right: 10px; /* スクロールバーと文字が重ならないように */
+    flex: 1; 
+    overflow-y: auto; 
+    padding-right: 10px; 
     
-    /* スクロールを滑らかに */
     scroll-behavior: smooth;
 }
 
-/* スクロールバーのカスタマイズ */
 .story-log::-webkit-scrollbar {
     width: 8px;
 }
@@ -139,7 +129,6 @@ body {
     border-radius: 4px;
 }
 
-/* メッセージスタイル */
 .system-msg { color: #888; font-style: italic; }
 .user-action { 
     color: var(--accent-gold); 
@@ -153,7 +142,6 @@ body {
     text-shadow: 0 0 2px rgba(255,255,255,0.3);
 }
 
-/* --- Controls Area (Right Side) --- */
 .controls-area {
     flex: 1;
     display: flex;
@@ -162,7 +150,6 @@ body {
     gap: 30px;
 }
 
-/* Radar / Compass */
 .radar-container {
     width: 250px;
     height: 250px;
@@ -178,7 +165,6 @@ body {
     overflow: hidden;
 }
 
-/* 同心円の装飾 */
 .radar-lines {
     position: absolute;
     top: 50%; left: 50%;
@@ -196,12 +182,11 @@ body {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%); /* JSでこれを上書き制御する */
+    transform: translate(-50%, -50%); 
     box-shadow: 0 0 10px var(--accent-gold);
-    transition: transform 0.1s ease-out; /* 滑らかに動かす */
+    transition: transform 0.1s ease-out;
 }
 
-/* Status Panel */
 .status-panel {
     text-align: center;
     width: 100%;
@@ -231,7 +216,6 @@ body {
 
 @keyframes blink { 50% { opacity: 0.3; } }
 
-/* Button */
 #reset-btn {
     display: none;
     background: transparent;
@@ -251,10 +235,9 @@ body {
     box-shadow: 0 0 15px var(--accent-danger);
 }
 
-/* --- Responsive for Mobile --- */
 @media (max-width: 768px) {
     .game-console {
-        flex-direction: column-reverse; /* スマホではレーダーを上にしてもいいかも */
+        flex-direction: column-reverse; 
     }
     .main-frame {
         height: 100vh;
@@ -267,7 +250,6 @@ body {
     }
 }
 
-/* --- QR Code Style --- */
 .qr-wrapper {
     background: rgba(255, 255, 255, 0.1);
     padding: 15px;
@@ -298,7 +280,6 @@ body {
     display: block;
 }
 
-/* ロード中（FATE WEAVING...）のときの見た目 */
 .action-log.loading {
     color: var(--accent-danger);
     animation: blink 1s infinite;

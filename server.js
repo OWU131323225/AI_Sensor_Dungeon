@@ -11,7 +11,7 @@ app.use(express.json());
 app.use(express.static('public'));
 
 const PROVIDER = 'gemini'; 
-const MODEL_GEMINI = 'gemma-3-4b-it'; // または 
+const MODEL_GEMINI = 'gemma-3-4b-it';
 const MODEL_OPENAI = 'gpt-4o-mini';
 
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_GEMINI}:generateContent`;
