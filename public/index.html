@@ -52,14 +52,14 @@
         const socket = io();
         let isProcessing = false; 
         let chatHistory = [];
+        
         let currentTurn = 1;
-        const MAX_TURNS = 10;
+        const MAX_TURNS = 10; // ★10ターンに戻しました
         let isGameOver = false;
 
-        // ページ読み込み時にQRコード生成
+        // QRコード生成
         window.onload = function() {
             const smartUrl = window.location.origin + "/smart.html";
-            console.log("スマホ用URL:", smartUrl);
             new QRCode(document.getElementById("qrcode"), {
                 text: smartUrl,
                 width: 100,
@@ -88,7 +88,6 @@
         }
 
         function checkAction(beta, gamma) {
-            // 処理中またはゲームオーバーなら何もしない
             if (isProcessing || isGameOver) return; 
 
             const THRESHOLD = 20; 
@@ -101,11 +100,9 @@
 
             const logEl = document.getElementById('log');
             
-            // アクションが検知された場合
             if (action) {
                 logEl.innerText = `>> ${action}`;
                 logEl.classList.add('active');
-                
                 if (!this.holdTimer) {
                     this.holdTimer = setTimeout(() => {
                         sendToAI(action);
@@ -113,7 +110,6 @@
                     }, 1000);
                 }
             } else {
-                // 傾きが戻った場合
                 if (this.holdTimer) {
                     clearTimeout(this.holdTimer);
                     this.holdTimer = null;
@@ -133,19 +129,89 @@
             const storyDiv = document.getElementById('story-area');
             const logEl = document.getElementById('log');
             
-            // ★重要修正：LOADING表示をlog要素で行う
             logEl.innerText = "FATE WEAVING...";
             logEl.classList.add('loading');
             
-            // ユーザーのアクションを表示
             storyDiv.innerHTML += `<div class="user-action">> ${action}</div>`;
             scrollToBottom();
 
-            let prompt = "";
-            if (currentTurn < MAX_TURNS) {
-                prompt = `あなたはファンタジーRPGのゲームマスターです。現在は全${MAX_TURNS}ターン中の【${currentTurn}ターン目】です。プレイヤーの行動：「${action}」。【指示】日本語で出力。メタ発言禁止。文脈を踏まえ、行動の結果をダークファンタジー風に50〜80文字で描写。`;
+            // 1. 直前の物語を取得
+            let lastStory = "古い遺跡の入り口で目が覚めた。記憶は曖昧だ。";
+            if (chatHistory.length > 0) {
+                const lastModelPart = chatHistory[chatHistory.length - 1];
+                if (lastModelPart.role === "model") {
+                    lastStory = lastModelPart.parts[0].text;
+                }
+            }
+
+            // 2. アクションの解釈（性格診断的な要素を入れる）
+            let actionMeaning = "";
+            let style = ""; // AIに伝えるプレイスタイル
+
+            if (action.includes("北")) {
+                actionMeaning = "【突破・挑戦】危険を顧みず、正面から奥へ進む";
+                style = "勇敢（あるいは無謀）";
+            } else if (action.includes("南")) {
+                actionMeaning = "【慎重・撤退】安全を確保するため、距離を取る";
+                style = "慎重（あるいは臆病）";
             } else {
-                prompt = `あなたはファンタジーRPGのナレーターです。これが【最終ターン（${MAX_TURNS}/${MAX_TURNS}）】です。プレイヤーの行動：「${action}」。【指示】日本語で出力。物語を完結させる。箇条書き禁止。`;
+                actionMeaning = "【探索・好奇心】周囲を調査し、手がかりを探す";
+                style = "好奇心旺盛（あるいは注意散漫）";
+            }
+
+            // 3. ステージ進行（10ターンでの起承転結）
+            let stageInstruction = "";
+            if (currentTurn <= 3) {
+                stageInstruction = "【序盤（謎）】静寂な遺跡。不気味な気配や、謎の文字が見つかる。敵はまだ出さない。";
+            } else if (currentTurn <= 8) {
+                stageInstruction = "【中盤（試練）】「守護者」と呼ばれる幽霊や罠が現れる。戦うか、避けるか、対話するかはプレイヤー次第。";
+            } else if (currentTurn < MAX_TURNS) {
+                stageInstruction = "【終盤（選択）】出口とおぼしき光が見えるが、巨大な影が立ちはだかる。";
+            } else {
+                stageInstruction = "【結末】";
+            }
+
+            let prompt = "";
+
+            if (currentTurn < MAX_TURNS) {
+                // 通常ターン
+                prompt = `
+                あなたはミステリーホラーRPGのGMです。
+                全${MAX_TURNS}ターン中の【${currentTurn}ターン目】です。
+                
+                【直前の物語】
+                ${lastStory}
+                
+                【プレイヤーの行動】
+                操作: 「${action}」
+                意図: ${actionMeaning}
+                （プレイスタイル: ${style}）
+                
+                【絶対的な指示】
+                1. 直前の文脈を引き継ぎ、遺跡の奥へ（または出口へ）誘導してください。
+                2. 「北」を選んだら物理的な解決（扉を蹴破る、敵を殴る）を描写。
+                3. 「東西」を選んだら知的な解決（謎を解く、抜け道を見つける）を描写。
+                4. 「南」を選んだら回避行動を描写。
+                5. 50〜80文字程度の小説風描写。
+                `;
+            } else {
+                // 最終ターン（性格診断エンディング）
+                prompt = `
+                あなたはRPGのナレーターです。これが最終ターンです。物語を完結させてください。
+                
+                【これまでのプレイヤーの傾向】
+                プレイヤーは10ターンの間、様々な選択をしてきました。
+                履歴（History）を参照し、プレイヤーが「勇敢だったか」「慎重だったか」「賢かったか」を判断してください。
+                
+                【指示】
+                その判断に基づき、以下のどれかの結末を出力してください。
+                A. 勇敢（北が多い）→「武人の結末」：敵を倒し英雄として生還するが、戦いの傷跡は残る。
+                B. 慎重（南が多い）→「生還者の結末」：何も得られなかったが、無傷で日常に戻る。
+                C. 知的（東西が多い）→「探求者の結末」：遺跡の秘宝や真実を持ち帰る。
+                D. どっちつかず →「迷宮の結末」：遺跡の闇に取り込まれ、行方不明になる。
+                
+                100文字程度のエピローグのみ出力してください。
+                `;
             }
 
             try {
@@ -166,7 +232,7 @@
 
                 if (currentTurn >= MAX_TURNS) {
                     isGameOver = true;
-                    logEl.innerText = "QUEST CLEAR";
+                    logEl.innerText = "FINALE";
                     document.getElementById('reset-btn').style.display = 'inline-block';
                     scrollToBottom();
                 } else {
@@ -176,21 +242,16 @@
 
             } catch (err) {
                 console.error(err);
-                storyDiv.innerHTML += `<div class="error-msg">通信エラー: 再試行してください</div>`;
+                storyDiv.innerHTML += `<div class="error-msg">通信エラー: 時間をおいて試してください</div>`;
                 scrollToBottom();
             } finally {
-                // 処理完了後のリセット
                 logEl.classList.remove('loading');
                 logEl.classList.remove('active');
-                
-                if (!isGameOver) {
-                    logEl.innerText = "STANDBY...";
-                }
-                
+                if (!isGameOver) logEl.innerText = "STANDBY...";
                 setTimeout(() => { isProcessing = false; }, 2000);
             }
         }
-
+        
         function resetGame() {
             if(!confirm("冒険をリセットして最初から始めますか？")) return;
             currentTurn = 1;
@@ -199,8 +260,8 @@
             document.getElementById('turn-display').innerText = `Turn: 1 / ${MAX_TURNS}`;
             document.getElementById('story-area').innerHTML = `
                 <p class="system-msg">
-                    暗い洞窟の入り口に立っている...。<br>
-                    右の「魔法陣（QRコード）」からスマホを接続せよ。
+                    古い遺跡の入り口で目が覚めた...。<br>
+                    右の「魔法陣（QRコード）」からスマホを接続し、運命を選択せよ。
                 </p>`;
             document.getElementById('reset-btn').style.display = 'none';
             document.getElementById('log').innerText = "STANDBY...";
