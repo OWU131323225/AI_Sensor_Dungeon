@@ -42,6 +42,33 @@
                     <div id="log" class="action-log">STANDBY...</div>
                     
                     <button id="reset-btn" onclick="resetGame()">🔄 RESTART</button>
+                    <button id="help-btn" class="cyber-btn" style="margin-left: 10px;">遊び方</button>
+
+                    <div id="help-modal" class="modal">
+                        <div class="modal-content">
+                            <span class="close-btn">&times;</span>
+                            <h2>📱 遊び方ガイド</h2>
+                            
+                            <div class="step-box">
+                                <h3>STEP 1. 接続</h3>
+                                <p>画面右上の <strong>QRコード</strong> をスマホで読み取ってください。<br>スマホがコントローラーになります。</p>
+                            </div>
+
+                            <div class="step-box">
+                                <h3>STEP 2. 操作 (スマホを傾ける)</h3>
+                                <ul class="control-list">
+                                    <li><span class="icon">⬆️</span> <strong>前に倒す</strong>： 奥へ進む / 攻撃</li>
+                                    <li><span class="icon">⬇️</span> <strong>手前に起こす</strong>： 戻る / 逃走</li>
+                                    <li><span class="icon">⬅️➡️</span> <strong>左右に傾ける</strong>： 探索 / 回避</li>
+                                </ul>
+                            </div>
+
+                            <div class="step-box">
+                                <h3>STEP 3. ルール</h3>
+                                <p>全10ターンのサバイバル。<br>AIが生成する予測不能なダンジョンから生還せよ！</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -65,7 +92,6 @@
         const MAX_BATTLES = 2;     
         let battleTurnCount = 0;   
 
-        // テーマとエリアの定義
         const THEME_LIST = [
             {
                 name: "氷結の山脈",
@@ -99,6 +125,24 @@
                 colorLight : "#ffffff",
                 correctLevel : QRCode.CorrectLevel.H
             });
+
+            const modal = document.getElementById("help-modal");
+            const btn = document.getElementById("help-btn");
+            const span = document.getElementsByClassName("close-btn")[0];
+
+            btn.onclick = function() {
+                modal.style.display = "block";
+            }
+
+            span.onclick = function() {
+                modal.style.display = "none";
+            }
+
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            }
         };
 
         socket.emit('join', 'game');
@@ -432,6 +476,7 @@
             document.getElementById('log').classList.remove('active');
             document.getElementById('log').classList.remove('loading');
         }
+        
     </script>
 </body>
 </html>

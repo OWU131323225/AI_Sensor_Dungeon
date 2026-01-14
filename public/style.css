@@ -284,4 +284,107 @@ body {
     color: var(--accent-danger);
     animation: blink 1s infinite;
     text-shadow: 0 0 10px var(--accent-danger);
-}cd
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85); /* 半透明の黒 */
+    backdrop-filter: blur(5px); /* 背景をぼかす */
+}
+
+.modal-content {
+    background-color: #0a0a0a;
+    border: 2px solid #00ffea; /* サイバーブルー */
+    box-shadow: 0 0 20px rgba(0, 255, 234, 0.5);
+    margin: 10% auto;
+    padding: 20px;
+    width: 80%;
+    max-width: 500px;
+    color: #fff;
+    font-family: 'Courier New', sans-serif;
+    border-radius: 8px;
+    position: relative;
+    animation: fadeIn 0.3s;
+}
+
+.close-btn {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.close-btn:hover {
+    color: #00ffea;
+}
+
+.modal-content h2 {
+    text-align: center;
+    color: #00ffea;
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+}
+
+.step-box {
+    margin-bottom: 20px;
+    background: #111;
+    padding: 10px;
+    border-left: 4px solid #00ffea;
+}
+
+.step-box h3 {
+    margin-top: 0;
+    font-size: 1.1em;
+    color: #ddd;
+}
+
+.control-list {
+    list-style: none;
+    padding: 0;
+}
+
+.control-list li {
+    margin: 8px 0;
+    font-size: 1.1em;
+}
+
+.icon {
+    display: inline-block;
+    width: 30px;
+}
+
+@keyframes fadeIn {
+    from {opacity: 0; transform: translateY(-20px);}
+    to {opacity: 1; transform: translateY(0);}
+}
+
+@media (max-width: 600px) {
+    .modal-content {
+        width: 90%;
+        margin: 20% auto;
+    }
+}
+
+#help-btn {
+    background: transparent;
+    border: 1px solid #ffffff; 
+    color: #ffffff; 
+    padding: 10px 30px;
+    font-family: var(--font-title);
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: 0.3s;
+}
+
+#help-btn:hover {
+    background: #ffffff;
+    color: var(--bg-dark);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.7); 
+}
