@@ -21,7 +21,7 @@
             <div class="screen-frame">
                 <div id="story-area" class="story-log">
                     <p class="system-msg">
-                        暗い洞窟の入り口に立っている...。<br>
+                        古い遺跡の入り口に立っている...。<br>
                         右の「魔法陣（QRコード）」からスマホを接続せよ。
                     </p>
                 </div>
@@ -51,13 +51,44 @@
     <script>
         const socket = io();
         let isProcessing = false; 
-        let chatHistory = [];
+        let chatHistory = []; 
         
         let currentTurn = 1;
-        const MAX_TURNS = 10; // ★10ターンに戻しました
+        const MAX_TURNS = 10; 
         let isGameOver = false;
 
-        // QRコード生成
+        let currentThemeData = null; 
+        let lastActionDirection = "";
+        let isBattleMode = false;
+
+        let battleCount = 0;       
+        const MAX_BATTLES = 2;     
+        let battleTurnCount = 0;   
+
+        // テーマとエリアの定義
+        const THEME_LIST = [
+            {
+                name: "氷結の山脈",
+                zones: ["吹雪く登山口（視界不良）", "透き通る氷の洞窟（寒さと美しさ）", "古代の氷壁遺跡（人工物）", "山頂の祭壇（空が近い）"]
+            },
+            {
+                name: "深淵の森",
+                zones: ["光るキノコの密林（幻想的）", "腐敗した黒い沼地（悪臭と泥）", "巨木に絡まれた石造りの廃墟（苔と石）", "森の主が住む巨大な巣（骨と粘液）"]
+            },
+            {
+                name: "機械仕掛けの塔",
+                zones: ["蒸気が吹き出す下層（配管と錆）", "歯車が轟く中層工場（油の匂い）", "静謐な時計塔内部（カチコチ音）", "最上階の制御室（電気とガラス）"]
+            },
+            {
+                name: "砂漠の大霊廟",
+                zones: ["熱風が舞う砂丘の入り口", "地下へと続く暗い回廊（乾燥）", "黄金の装飾が残る王の間", "呪われた最深部の玄室"]
+            },
+            {
+                name: "水没都市",
+                zones: ["珊瑚に覆われた浅瀬の廃ビル", "深海の暗い商店街（魚の骨）", "巨大な沈没船の内部（鉄錆）", "海底神殿の入り口"]
+            }
+        ];
+
         window.onload = function() {
             const smartUrl = window.location.origin + "/smart.html";
             new QRCode(document.getElementById("qrcode"), {
@@ -93,19 +124,33 @@
             const THRESHOLD = 20; 
             let action = "";
 
-            if (beta < -THRESHOLD) action = "北（奥）へ進む";
-            else if (beta > THRESHOLD) action = "南（手前）へ戻る";
-            else if (gamma > THRESHOLD) action = "東（右）へ進む";
-            else if (gamma < -THRESHOLD) action = "西（左）へ進む";
+            if (beta < -THRESHOLD) action = "北（奥）";
+            else if (beta > THRESHOLD) action = "南（手前）";
+            else if (gamma > THRESHOLD) action = "東（右）";
+            else if (gamma < -THRESHOLD) action = "西（左）";
 
             const logEl = document.getElementById('log');
             
             if (action) {
-                logEl.innerText = `>> ${action}`;
+                let displayAction = action;
+                if (isBattleMode) {
+                    if (action.includes("北")) displayAction = "⚔️ 攻撃 (ATTACK)";
+                    else if (action.includes("南")) displayAction = "💨 逃走 (ESCAPE)";
+                    else displayAction = "🛡️ 回避 (DODGE)";
+                    logEl.style.color = "#ff4444"; 
+                } else {
+                    if (action.includes("北")) displayAction = "北へ進む";
+                    else if (action.includes("南")) displayAction = "南へ戻る";
+                    else if (action.includes("東")) displayAction = "東へ進む";
+                    else displayAction = "西へ進む";
+                    logEl.style.color = "#00ffea"; 
+                }
+
+                logEl.innerText = `>> ${displayAction}`;
                 logEl.classList.add('active');
                 if (!this.holdTimer) {
                     this.holdTimer = setTimeout(() => {
-                        sendToAI(action);
+                        sendToAI(action); 
                         this.holdTimer = null;
                     }, 1000);
                 }
@@ -113,7 +158,7 @@
                 if (this.holdTimer) {
                     clearTimeout(this.holdTimer);
                     this.holdTimer = null;
-                    logEl.innerText = "STANDBY...";
+                    logEl.innerText = isBattleMode ? "BATTLE MODE..." : "STANDBY...";
                     logEl.classList.remove('active');
                 }
             }
@@ -124,7 +169,7 @@
             storyDiv.scrollTop = storyDiv.scrollHeight;
         }
 
-        async function sendToAI(action) {
+        async function sendToAI(rawAction) {
             isProcessing = true;
             const storyDiv = document.getElementById('story-area');
             const logEl = document.getElementById('log');
@@ -132,85 +177,156 @@
             logEl.innerText = "FATE WEAVING...";
             logEl.classList.add('loading');
             
-            storyDiv.innerHTML += `<div class="user-action">> ${action}</div>`;
+            let displayActionText = "";
+            if (isBattleMode) {
+                 if (rawAction.includes("北")) displayActionText = "⚔️ 敵に攻撃を仕掛ける！";
+                 else if (rawAction.includes("南")) displayActionText = "💨 敵から逃走を図る！";
+                 else displayActionText = "🛡️ 敵の攻撃を回避する！";
+            } else {
+                 if (rawAction.includes("北")) displayActionText = "北（奥）へ進む";
+                 else if (rawAction.includes("南")) displayActionText = "南（手前）へ戻る";
+                 else if (rawAction.includes("東")) displayActionText = "東（右）へ進む";
+                 else displayActionText = "西（左）へ進む";
+            }
+
+            storyDiv.innerHTML += `<div class="user-action">> ${displayActionText}</div>`;
             scrollToBottom();
 
-            // 1. 直前の物語を取得
-            let lastStory = "古い遺跡の入り口で目が覚めた。記憶は曖昧だ。";
-            if (chatHistory.length > 0) {
+            // 文脈とテーマ
+            let lastStory = "";
+            if (chatHistory.length === 0) {
+                currentThemeData = THEME_LIST[Math.floor(Math.random() * THEME_LIST.length)];
+                lastStory = `気がつくと、あなたは『${currentThemeData.name}』の入り口（${currentThemeData.zones[0]}）に立っていた。`;
+            } else {
                 const lastModelPart = chatHistory[chatHistory.length - 1];
                 if (lastModelPart.role === "model") {
                     lastStory = lastModelPart.parts[0].text;
                 }
             }
 
-            // 2. アクションの解釈（性格診断的な要素を入れる）
-            let actionMeaning = "";
-            let style = ""; // AIに伝えるプレイスタイル
-
-            if (action.includes("北")) {
-                actionMeaning = "【突破・挑戦】危険を顧みず、正面から奥へ進む";
-                style = "勇敢（あるいは無謀）";
-            } else if (action.includes("南")) {
-                actionMeaning = "【慎重・撤退】安全を確保するため、距離を取る";
-                style = "慎重（あるいは臆病）";
+            // ゾーン計算
+            let zoneIndex = 0;
+            if (currentTurn >= 10) zoneIndex = 3;
+            else if (currentTurn >= 7) zoneIndex = 2;
+            else if (currentTurn >= 4) zoneIndex = 1;
+            
+            let currentZoneName = currentThemeData.zones[zoneIndex];
+            let prevZoneName = (zoneIndex > 0) ? currentThemeData.zones[zoneIndex - 1] : "";
+            
+            let zoneChangeInstruction = "";
+            if (currentTurn === 4 || currentTurn === 7 || currentTurn === 10) {
+                zoneChangeInstruction = `★重要：プレイヤーは今、新しいエリア『${currentZoneName}』に足を踏み入れました。以前の『${prevZoneName}』とは景色や匂いがガラリと変わったことを強調して描写してください。前のエリアの特徴はもう描写しないでください。`;
             } else {
-                actionMeaning = "【探索・好奇心】周囲を調査し、手がかりを探す";
-                style = "好奇心旺盛（あるいは注意散漫）";
+                zoneChangeInstruction = `現在の場所は『${currentZoneName}』です。この場所特有の景色を描写してください。`;
             }
 
-            // 3. ステージ進行（10ターンでの起承転結）
-            let stageInstruction = "";
-            if (currentTurn <= 3) {
-                stageInstruction = "【序盤（謎）】静寂な遺跡。不気味な気配や、謎の文字が見つかる。敵はまだ出さない。";
-            } else if (currentTurn <= 8) {
-                stageInstruction = "【中盤（試練）】「守護者」と呼ばれる幽霊や罠が現れる。戦うか、避けるか、対話するかはプレイヤー次第。";
-            } else if (currentTurn < MAX_TURNS) {
-                stageInstruction = "【終盤（選択）】出口とおぼしき光が見えるが、巨大な影が立ちはだかる。";
+            // アクション意図
+            let playerIntent = "";
+            let currentDirection = ""; 
+
+            if (isBattleMode) {
+                if (rawAction.includes("北")) playerIntent = "【攻撃】一か八か、敵に致命傷を与えるつもりで攻める。";
+                else if (rawAction.includes("南")) playerIntent = "【逃走】戦況不利と判断し、全力でその場から離脱する。";
+                else playerIntent = "【回避】敵の攻撃を見切り、時間を稼ぐ。";
             } else {
-                stageInstruction = "【結末】";
+                if (rawAction.includes("北")) {
+                    playerIntent = "【突破】奥へ進む。";
+                    currentDirection = "北";
+                } else if (rawAction.includes("南")) {
+                    playerIntent = "【後退】戻る、または警戒する。";
+                    currentDirection = "南";
+                } else if (rawAction.includes("東")) {
+                    playerIntent = "【探索】右へ進む。";
+                    currentDirection = "東";
+                } else {
+                    playerIntent = "【探索】左へ進む。";
+                    currentDirection = "西";
+                }
             }
+
+            // 接続詞
+            let transitionInstruction = "";
+            if (!isBattleMode) {
+                if (chatHistory.length === 0) transitionInstruction = "物語の書き出しです。";
+                else if (currentDirection === lastActionDirection) transitionInstruction = "前回と同じ方向への移動です。「さらに奥へ」「依然として」などで自然に繋げてください。";
+                else transitionInstruction = "前回とは違う方向への移動です。「方向を変え」「咄嗟に横へ」などで場面転換を描写してください。";
+                lastActionDirection = currentDirection;
+            }
+
+            if (chatHistory.length > 6) chatHistory = chatHistory.slice(-6);
+
+            // --- ★修正：バトル発生ロジック（最低保証付き） ---
+            let encounterInstruction = "";
+            if (!isBattleMode) {
+                // 条件1: まだ最大回数戦っていない
+                if (battleCount < MAX_BATTLES) {
+                     // 条件2: 9ターン目になっても一度も戦ってないなら強制エンカウント（見せ場を作る）
+                     if (currentTurn === 9 && battleCount === 0) {
+                        encounterInstruction = "★重要指示：【クライマックス発生】突如としてこのエリアの主（ボス）が現れました！強制的に戦闘に突入します。文末に必ず『[BATTLE_START]』と出力してください。";
+                     }
+                     // 条件3: 4ターン目以降、20%の確率でランダムエンカウント
+                     else if (currentTurn >= 4 && Math.random() < 0.20) {
+                        encounterInstruction = "★重要指示：この描写の最後に、突如として敵や怪物が現れ、襲い掛かる描写を入れてください。文末に必ず『[BATTLE_START]』と出力してください。";
+                     } else {
+                        encounterInstruction = "★重要指示：戦闘は禁止です。環境の変化や探索の様子を描写してください。";
+                     }
+                } else {
+                    encounterInstruction = "★重要指示：戦闘は禁止です。環境の変化や探索の様子を描写してください。";
+                }
+            }
+            // ---------------------------------------------
 
             let prompt = "";
 
-            if (currentTurn < MAX_TURNS) {
-                // 通常ターン
-                prompt = `
-                あなたはミステリーホラーRPGのGMです。
-                全${MAX_TURNS}ターン中の【${currentTurn}ターン目】です。
-                
-                【直前の物語】
-                ${lastStory}
-                
-                【プレイヤーの行動】
-                操作: 「${action}」
-                意図: ${actionMeaning}
-                （プレイスタイル: ${style}）
-                
-                【絶対的な指示】
-                1. 直前の文脈を引き継ぎ、遺跡の奥へ（または出口へ）誘導してください。
-                2. 「北」を選んだら物理的な解決（扉を蹴破る、敵を殴る）を描写。
-                3. 「東西」を選んだら知的な解決（謎を解く、抜け道を見つける）を描写。
-                4. 「南」を選んだら回避行動を描写。
-                5. 50〜80文字程度の小説風描写。
-                `;
+            if (currentTurn < MAX_TURNS || isBattleMode) {
+                if (isBattleMode) {
+                    battleTurnCount++;
+                    let battleEndForce = "";
+                    if (battleTurnCount >= 2) {
+                        battleEndForce = "戦闘を終わらせてください。今回のアクションで必ず決着（勝利または逃走）させてください。";
+                    }
+
+                    prompt = `
+                    あなたはアクション小説家です。現在【戦闘中】です。
+                    
+                    【場所】${currentZoneName}
+                    【直前の状況】${lastStory}
+                    【プレイヤーの行動】${playerIntent}
+                    
+                    【執筆ルール】
+                    1. プレイヤーと敵の攻防を、五感（音、衝撃、痛み、匂い）を使って描写してください。
+                    2. ${battleEndForce}
+                    3. 決着判定：
+                       - 勝利/逃走 → 文末に『[BATTLE_END]』
+                       - 敗北/死亡 → 文末に『[GAME_OVER]』
+                    4. 決着がつかない場合はタグを出さないでください。
+                    5. 『[BATTLE_START]』タグは絶対に出さないでください。
+                    6. 80〜100文字程度。
+                    `;
+                } else {
+                    prompt = `
+                    あなたはアクション小説家です。全${MAX_TURNS}ターン中の【${currentTurn}ターン目】です。
+                    
+                    【現在のエリア】『${currentZoneName}』
+                    （テーマ: ${currentThemeData.name}）
+                    
+                    【直前の物語】${lastStory}
+                    【プレイヤーの行動】「${rawAction}」（意図: ${playerIntent}）
+                    
+                    【執筆ルール】
+                    1. ${zoneChangeInstruction}
+                    2. ${transitionInstruction}
+                    3. 「〇〇へ進むと」という書き出しは禁止。
+                    4. 五感を使った描写をしてください。
+                    5. ${encounterInstruction}
+                    6. 80〜100文字程度。
+                    `;
+                }
             } else {
-                // 最終ターン（性格診断エンディング）
                 prompt = `
-                あなたはRPGのナレーターです。これが最終ターンです。物語を完結させてください。
-                
-                【これまでのプレイヤーの傾向】
-                プレイヤーは10ターンの間、様々な選択をしてきました。
-                履歴（History）を参照し、プレイヤーが「勇敢だったか」「慎重だったか」「賢かったか」を判断してください。
-                
-                【指示】
-                その判断に基づき、以下のどれかの結末を出力してください。
-                A. 勇敢（北が多い）→「武人の結末」：敵を倒し英雄として生還するが、戦いの傷跡は残る。
-                B. 慎重（南が多い）→「生還者の結末」：何も得られなかったが、無傷で日常に戻る。
-                C. 知的（東西が多い）→「探求者の結末」：遺跡の秘宝や真実を持ち帰る。
-                D. どっちつかず →「迷宮の結末」：遺跡の闇に取り込まれ、行方不明になる。
-                
-                100文字程度のエピローグのみ出力してください。
+                あなたは冒険小説のナレーターです。これが最終ターンです。
+                プレイヤーは『${currentThemeData.name}』の最奥『${currentZoneName}』まで到達し、生還しました。
+                物語を締めくくる、余韻のあるエピローグを100文字程度で書いてください。
                 `;
             }
 
@@ -224,43 +340,100 @@
                 const data = await res.json();
                 if (data.error) throw new Error(data.error);
                 
-                storyDiv.innerHTML += `<div class="ai-response">${data.reply}</div>`;
-                scrollToBottom();
-                
-                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-                chatHistory.push({ role: "model", parts: [{ text: data.reply }] });
+                let replyText = data.reply;
+                let systemMsg = "";
 
-                if (currentTurn >= MAX_TURNS) {
+                if (replyText.includes("[GAME_OVER]")) {
                     isGameOver = true;
-                    logEl.innerText = "FINALE";
+                    replyText = replyText.replace("[GAME_OVER]", "").trim();
+                    systemMsg = "💀 GAME OVER... あなたの冒険は終わった。";
+                    document.getElementById('log').style.color = "red";
+                    document.getElementById('log').innerText = "YOU DIED";
+                }
+                else if (replyText.includes("[BATTLE_END]")) {
+                    isBattleMode = false;
+                    battleCount++; 
+                    battleTurnCount = 0; 
+                    replyText = replyText.replace("[BATTLE_END]", "").trim();
+                    systemMsg = "✨ VICTORY / ESCAPE 戦闘終了";
+                    document.getElementById('log').style.color = "#00ffea";
+                    document.getElementById('log').innerText = "STANDBY...";
+                }
+                else if (replyText.includes("[BATTLE_START]")) {
+                    if (!isBattleMode) {
+                        isBattleMode = true;
+                        battleTurnCount = 0;
+                        replyText = replyText.replace("[BATTLE_START]", "").trim();
+                        systemMsg = "⚔️ BATTLE START!! 戦闘開始！";
+                        document.getElementById('log').style.color = "#ff4444";
+                        document.getElementById('log').innerText = "BATTLE MODE";
+                    } else {
+                        replyText = replyText.replace("[BATTLE_START]", "").trim();
+                    }
+                }
+
+                storyDiv.innerHTML += `<div class="ai-response">${replyText}</div>`;
+                if (systemMsg) {
+                    let color = "#00ffea";
+                    if (systemMsg.includes("GAME OVER")) color = "red";
+                    else if (systemMsg.includes("BATTLE")) color = "#ff4444";
+                    storyDiv.innerHTML += `<div class="system-msg" style="color: ${color}; font-weight:bold;">${systemMsg}</div>`;
+                }
+                scrollToBottom();
+
+                if (chatHistory.length > 6) chatHistory = chatHistory.slice(-6);
+
+                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                chatHistory.push({ role: "model", parts: [{ text: replyText }] });
+
+                if (isGameOver) {
+                    document.getElementById('reset-btn').style.display = 'inline-block';
+                    scrollToBottom();
+                    return; 
+                }
+
+                if (currentTurn >= MAX_TURNS && !isBattleMode) {
+                    isGameOver = true;
+                    logEl.innerText = "THE END";
+                    logEl.style.color = "#00ffea";
                     document.getElementById('reset-btn').style.display = 'inline-block';
                     scrollToBottom();
                 } else {
                     currentTurn++;
-                    document.getElementById('turn-display').innerText = `Turn: ${currentTurn} / ${MAX_TURNS}`;
+                    document.getElementById('turn-display').innerText = `Turn: ${Math.min(currentTurn, MAX_TURNS)} / ${MAX_TURNS}`;
                 }
 
             } catch (err) {
                 console.error(err);
-                storyDiv.innerHTML += `<div class="error-msg">通信エラー: 時間をおいて試してください</div>`;
+                storyDiv.innerHTML += `<div class="error-msg">通信エラー（再試行してください）</div>`;
+                chatHistory = [];
                 scrollToBottom();
             } finally {
                 logEl.classList.remove('loading');
                 logEl.classList.remove('active');
-                if (!isGameOver) logEl.innerText = "STANDBY...";
+                if (!isGameOver) {
+                    logEl.innerText = isBattleMode ? "BATTLE MODE..." : "STANDBY...";
+                }
                 setTimeout(() => { isProcessing = false; }, 2000);
             }
         }
-        
+
         function resetGame() {
             if(!confirm("冒険をリセットして最初から始めますか？")) return;
             currentTurn = 1;
+            currentThemeData = null;
+            lastActionDirection = "";
+            isBattleMode = false;
+            battleCount = 0; 
+            battleTurnCount = 0;
             isGameOver = false;
             chatHistory = []; 
+            
             document.getElementById('turn-display').innerText = `Turn: 1 / ${MAX_TURNS}`;
+            document.getElementById('log').style.color = "#00ffea";
             document.getElementById('story-area').innerHTML = `
                 <p class="system-msg">
-                    古い遺跡の入り口で目が覚めた...。<br>
+                    未知の遺跡の入り口で目が覚めた...。<br>
                     右の「魔法陣（QRコード）」からスマホを接続し、運命を選択せよ。
                 </p>`;
             document.getElementById('reset-btn').style.display = 'none';
